@@ -1,0 +1,116 @@
+diff -ruN binutils-2.25.1/bfd/cache.c binutils-2.25.1-32strap/bfd/cache.c
+--- binutils-2.25.1/bfd/cache.c	2014-10-14 07:32:02.000000000 +0000
++++ binutils-2.25.1-32strap/bfd/cache.c	2017-02-05 22:13:57.017176509 +0000
+@@ -90,6 +92,9 @@
+ #else
+ 	max = 10;
+ #endif /* _SC_OPEN_MAX */
++#if defined(__sun) && !defined(_LP64)
++      max = 16;
++#endif
+       max_open_files = max < 10 ? 10 : max;
+     }
+ 
+diff -ruN binutils-2.25.1/bfd/config.bfd binutils-2.25.1-32strap/bfd/config.bfd
+--- binutils-2.25.1/bfd/config.bfd	2014-10-14 07:32:02.000000000 +0000
++++ binutils-2.25.1-32strap/bfd/config.bfd	2017-02-03 10:01:08.587903371 +0000
+@@ -177,12 +177,12 @@
+     targ_selvecs="aarch64_elf64_le_vec aarch64_elf32_le_vec aarch64_elf32_be_vec arm_elf32_be_vec arm_elf32_le_vec"
+     want64=true
+     ;;
+-  aarch64-*-linux*)
++  aarch64-*-linux* | aarch64-*-illumos* | aarch64-*-solaris*)
+     targ_defvec=aarch64_elf64_le_vec
+     targ_selvecs="aarch64_elf64_be_vec aarch64_elf32_le_vec aarch64_elf32_be_vec arm_elf32_le_vec arm_elf32_be_vec"
+     want64=true
+     ;;
+-  aarch64_be-*-linux*)
++  aarch64_be-*-linux* | aarch64_be-*-illumos* | aarch64_be-*-solaris*)
+     targ_defvec=aarch64_elf64_be_vec
+     targ_selvecs="aarch64_elf64_le_vec aarch64_elf32_le_vec aarch64_elf32_be_vec arm_elf32_be_vec arm_elf32_le_vec"
+     want64=true
+@@ -337,7 +337,7 @@
+     targ_selvecs=arm_elf32_be_vec
+     ;;
+   arm-*-elf | arm*-*-freebsd* | arm*-*-linux-* | arm*-*-conix* | \
+-  arm*-*-uclinux* | arm-*-kfreebsd*-gnu | \
++  arm*-*-uclinux* | arm-*-kfreebsd*-gnu | arm-*-illumos | arm-*-solaris* | \
+   arm*-*-eabi* )
+     targ_defvec=arm_elf32_le_vec
+     targ_selvecs=arm_elf32_be_vec
+diff -ruN binutils-2.25.1/config.sub binutils-2.25.1-32strap/config.sub
+--- binutils-2.25.1/config.sub	2014-10-14 07:32:02.000000000 +0000
++++ binutils-2.25.1-32strap/config.sub	2017-02-03 10:01:08.589425788 +0000
+@@ -118,7 +118,7 @@
+   nto-qnx* | linux-gnu* | linux-android* | linux-dietlibc | linux-newlib* | \
+   linux-musl* | linux-uclibc* | uclinux-uclibc* | uclinux-gnu* | kfreebsd*-gnu* | \
+   knetbsd*-gnu* | netbsd*-gnu* | \
+-  kopensolaris*-gnu* | \
++  kopensolaris*-gnu* | illumos* | \
+   storm-chaos* | os2-emx* | rtmk-nova*)
+     os=-$maybe_os
+     basic_machine=`echo $1 | sed 's/^\(.*\)-\([^-]*-[^-]*\)$/\1/'`
+@@ -1362,7 +1362,7 @@
+ 	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+-	      | -sym* | -kopensolaris* | -plan9* \
++	      | -sym* | -kopensolaris* | -illumos* | -plan9* \
+ 	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
+ 	      | -aos* | -aros* \
+ 	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
+diff -ruN binutils-2.25.1/gas/config/te-armillumoseabi.h binutils-2.25.1-32strap/gas/config/te-armillumoseabi.h
+--- binutils-2.25.1/gas/config/te-armillumoseabi.h	1970-01-01 00:00:00.000000000 +0000
++++ binutils-2.25.1-32strap/gas/config/te-armillumoseabi.h	2017-02-03 10:01:08.590098669 +0000
+@@ -0,0 +1,24 @@
++/* Copyright (c) 2013, Joyent, Inc.
++
++   This file is part of GAS, the GNU Assembler.
++
++   GAS is free software; you can redistribute it and/or modify
++   it under the terms of the GNU General Public License as
++   published by the Free Software Foundation; either version 3,
++   or (at your option) any later version.
++
++   GAS is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
++   the GNU General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with GAS; see the file COPYING.  If not, write to the Free
++   Software Foundation, 51 Franklin Street - Fifth Floor, Boston, MA
++   02110-1301, USA.  */
++
++#include "te-solaris.h"
++
++/* The EABI requires the use of VFP.  */
++#define FPU_DEFAULT	FPU_ARCH_VFP
++#define EABI_DEFAULT	EF_ARM_EABI_VER5
+diff -ruN binutils-2.25.1/gas/config/te-illumos.h binutils-2.25.1-32strap/gas/config/te-illumos.h
+--- binutils-2.25.1/gas/config/te-illumos.h	1970-01-01 00:00:00.000000000 +0000
++++ binutils-2.25.1-32strap/gas/config/te-illumos.h	2017-02-03 10:01:08.590480711 +0000
+@@ -0,0 +1 @@
++#include "te-solaris.h"
+diff -ruN binutils-2.25.1/gas/configure.tgt binutils-2.25.1-32strap/gas/configure.tgt
+--- binutils-2.25.1/gas/configure.tgt	2015-07-21 08:20:58.000000000 +0000
++++ binutils-2.25.1-32strap/gas/configure.tgt	2017-02-03 10:01:08.591205014 +0000
+@@ -119,7 +119,9 @@
+ # Note: This table is alpha-sorted, please try to keep it that way.
+ case ${generic_target} in
+   aarch64*-*-elf)			fmt=elf;;
++  aarch64*-*-illumos*)			fmt=elf em=illumos ;;
+   aarch64*-*-linux*)			fmt=elf em=linux ;;
++  aarch64*-*-solaris*)			fmt=elf em=solaris ;;
+ 
+   alpha-*-*vms*)			fmt=evax ;;
+   alpha-*-osf*)				fmt=ecoff ;;
+@@ -138,6 +140,8 @@
+   arm-*-symbianelf*)			fmt=elf em=symbian ;;
+   arm-*-kaos*)				fmt=elf ;;
+   arm-*-conix*)				fmt=elf ;;
++  arm-*-illumos*)			fmt=elf em=armillumoseabi ;;
++  arm-*-solaris*)			fmt=elf em=armillumoseabi ;;
+   arm-*-freebsd[89].* | armeb-*-freebsd[89].*)
+ 					fmt=elf  em=freebsd ;;
+   arm-*-freebsd* | armeb-*-freebsd*)	fmt=elf  em=armfbsdeabi ;;

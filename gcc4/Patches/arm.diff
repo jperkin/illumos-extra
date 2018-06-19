@@ -1,0 +1,284 @@
+diff -ruN gcc-4.9.4/gcc/config/aarch64/sol2.h gcc-4.9.4-32strap/gcc/config/aarch64/sol2.h
+--- gcc-4.9.4/gcc/config/aarch64/sol2.h	1970-01-01 00:00:00.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/aarch64/sol2.h	2017-02-06 18:31:32.187193708 +0000
+@@ -0,0 +1,32 @@
++#include <stdio.h>
++
++extern void aarch64_print_operand (FILE *, rtx, char);
++
++#define TARGET_SUN_TLS 1
++
++#define ASM_OUTPUT_CALL(FILE, FN)				\
++  do {								\
++    fprintf (FILE, "\tbl\t");					\
++    aarch64_print_operand (FILE, XEXP (DECL_RTL (FN), 0), 0);	\
++    fprintf (FILE, "\n");					\
++  } while (0)
++
++/*
++ * XXXARM: We're re-defining this to the default ARM-y value, because sol2.h
++ * makes it Sun as-y, which of course we'll never have.
++ */
++#undef ASM_SPEC
++#define ASM_SPEC "\
++%{mbig-endian:-EB} \
++%{mlittle-endian:-EL} \
++%{mcpu=*:-mcpu=%*} \
++%{march=*:-march=%*} \
++%{mapcs-*:-mapcs-%*} \
++%(subtarget_asm_float_spec) \
++%{mthumb-interwork:-mthumb-interwork} \
++%{msoft-float:-mfloat-abi=soft} %{mhard-float:-mfloat-abi=hard} \
++%{mfloat-abi=*} %{mfpu=*} \
++%(subtarget_extra_asm_spec)"
++
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()	SOL_TARGET_OS_CPP_BUILTINS()
+diff -ruN gcc-4.9.4/gcc/config/arm/arm.c gcc-4.9.4-32strap/gcc/config/arm/arm.c
+--- gcc-4.9.4/gcc/config/arm/arm.c	2016-05-20 20:51:18.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/arm/arm.c	2017-02-06 11:59:06.797217017 +0000
+@@ -93,7 +93,7 @@
+ static bool thumb_force_lr_save (void);
+ static unsigned arm_size_return_regs (void);
+ static bool arm_assemble_integer (rtx, unsigned int, int);
+-static void arm_print_operand (FILE *, rtx, int);
++void arm_print_operand (FILE *, rtx, int);
+ static void arm_print_operand_address (FILE *, rtx);
+ static bool arm_print_operand_punct_valid_p (unsigned char code);
+ static const char *fp_const_from_val (REAL_VALUE_TYPE *);
+@@ -21071,7 +21071,7 @@
+    before output.
+    If CODE is 'B' then output a bitwise inverted value of X (a const int).
+    If X is a REG and CODE is `M', output a ldm/stm style multi-reg.  */
+-static void
++void
+ arm_print_operand (FILE *stream, rtx x, int code)
+ {
+   switch (code)
+diff -ruN gcc-4.9.4/gcc/config/arm/arm.h gcc-4.9.4-32strap/gcc/config/arm/arm.h
+--- gcc-4.9.4/gcc/config/arm/arm.h	2016-03-29 13:32:37.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/arm/arm.h	2017-02-06 11:59:06.798786401 +0000
+@@ -976,7 +976,11 @@
+    backtrace structures on the stack (if required to do so via a command line
+    option) using r11.  This is the only 'user visible' use of r11 as a frame
+    pointer.  */
++#ifdef SUBTARGET_ARM_FRAME_POINTER_REGNUM
++#define ARM_HARD_FRAME_POINTER_REGNUM	SUBTARGET_ARM_FRAME_POINTER_REGNUM
++#else
+ #define ARM_HARD_FRAME_POINTER_REGNUM	11
++#endif
+ #define THUMB_HARD_FRAME_POINTER_REGNUM	 7
+ 
+ #define HARD_FRAME_POINTER_REGNUM		\
+diff -ruN gcc-4.9.4/gcc/config/arm/bpabi.h gcc-4.9.4-32strap/gcc/config/arm/bpabi.h
+--- gcc-4.9.4/gcc/config/arm/bpabi.h	2014-05-27 11:42:10.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/arm/bpabi.h	2017-02-06 11:59:06.799315620 +0000
+@@ -114,7 +114,7 @@
+ #define BPABI_LINK_SPEC \
+   "%{mbig-endian:-EB} %{mlittle-endian:-EL} "		\
+   "%{static:-Bstatic} %{shared:-shared} %{symbolic:-Bsymbolic} "	\
+-  "-X" SUBTARGET_EXTRA_LINK_SPEC EABI_LINK_SPEC
++  SUBTARGET_EXTRA_LINK_SPEC EABI_LINK_SPEC
+ 
+ #undef  LINK_SPEC
+ #define LINK_SPEC BPABI_LINK_SPEC
+diff -ruN gcc-4.9.4/gcc/config/arm/elf.h gcc-4.9.4-32strap/gcc/config/arm/elf.h
+--- gcc-4.9.4/gcc/config/arm/elf.h	2014-05-27 11:42:10.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/arm/elf.h	2017-02-06 11:59:06.799748905 +0000
+@@ -107,7 +107,7 @@
+    (TARGET_32BIT || (TARGET_THUMB && (optimize_size || flag_pic)))
+ 
+ #ifndef LINK_SPEC
+-#define LINK_SPEC "%{mbig-endian:-EB} %{mlittle-endian:-EL} -X"
++#define LINK_SPEC "%{mbig-endian:-EB} %{mlittle-endian:-EL}"
+ #endif
+   
+ /* Run-time Target Specification.  */
+diff -ruN gcc-4.9.4/gcc/config/arm/sol2.h gcc-4.9.4-32strap/gcc/config/arm/sol2.h
+--- gcc-4.9.4/gcc/config/arm/sol2.h	1970-01-01 00:00:00.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/arm/sol2.h	2017-02-06 18:32:50.939303056 +0000
+@@ -0,0 +1,73 @@
++#include <stdio.h>
++
++extern void arm_print_operand (FILE *, rtx, int);
++
++#define TARGET_SUN_TLS 1
++
++#define ASM_OUTPUT_CALL(FILE, FN)				\
++  do {								\
++    fprintf (FILE, "\tbl\t");					\
++    arm_print_operand (FILE, XEXP (DECL_RTL (FN), 0), 0);	\
++    fprintf (FILE, "\n");					\
++  } while (0)
++
++/*
++ * XXXARM: We're re-defining this to the default ARM-y value, because sol2.h
++ * makes it Sun as-y, which of course we'll never have.
++ */
++#undef ASM_SPEC
++#define ASM_SPEC "\
++%{mbig-endian:-EB} \
++%{mlittle-endian:-EL} \
++%{mcpu=*:-mcpu=%*} \
++%{march=*:-march=%*} \
++%{mapcs-*:-mapcs-%*} \
++%(subtarget_asm_float_spec) \
++%{mthumb-interwork:-mthumb-interwork} \
++%{msoft-float:-mfloat-abi=soft} %{mhard-float:-mfloat-abi=hard} \
++%{mfloat-abi=*} %{mfpu=*} \
++%(subtarget_extra_asm_spec)"
++
++/* This is how to declare the size of a function.  For Solaris, we output
++   any .init or .fini entries here.  */
++#undef ASM_DECLARE_FUNCTION_SIZE
++#define ASM_DECLARE_FUNCTION_SIZE(FILE, FNAME, DECL)		\
++  do								\
++    {								\
++      ARM_OUTPUT_FN_UNWIND (FILE, FALSE);			\
++      if (!flag_inhibit_size_directive)				\
++	ASM_OUTPUT_MEASURED_SIZE (FILE, FNAME);			\
++      solaris_output_init_fini (FILE, DECL);			\
++    }								\
++  while (0)
++
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++  do 						\
++    {						\
++      TARGET_BPABI_CPP_BUILTINS();		\
++      SOL_TARGET_OS_CPP_BUILTINS();		\
++    }						\
++  while (false)
++
++#undef	TARGET_DEFAULT_FLOAT_ABI
++#define	TARGET_DEFAULT_FLOAT_ABI	ARM_FLOAT_ABI_HARD
++
++#undef	ARM_DEFAULT_ABI
++#define	ARM_DEFAULT_ABI	ARM_ABI_AAPCS_LINUX
++
++#undef	SUBTARGET_ARCH_DEFAULT
++#define	SUBTARGET_ARCH_DEFAULT
++
++/* XXXARM: Something we can do to disable interwork? */
++
++/*
++ * XXXARM: Unlike the cool kids we actually kind of care about the frame
++ * pointer. So let's get that going here. We're going to try and use r7 like the
++ * Apple iOS ABI and hence are a bit hacky about how we do that.
++ */
++#undef SUBTARGET_FRAME_POINTER_REQUIRED
++#define SUBTARGET_FRAME_POINTER_REQUIRED	1
++
++#undef SUBTARGET_ARM_FRAME_POINTER_REGNUM
++#define SUBTARGET_ARM_FRAME_POINTER_REGNUM	9
+diff -ruN gcc-4.9.4/gcc/config/sol2.h gcc-4.9.4-32strap/gcc/config/sol2.h
+--- gcc-4.9.4/gcc/config/sol2.h	2014-05-28 11:37:50.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config/sol2.h	2017-02-06 11:59:06.800614852 +0000
+@@ -76,7 +76,7 @@
+ 
+ /* Names to predefine in the preprocessor for this target machine.  */
+ #define TARGET_SUB_OS_CPP_BUILTINS()
+-#define TARGET_OS_CPP_BUILTINS()			\
++#define SOL_TARGET_OS_CPP_BUILTINS()			\
+     do {						\
+ 	builtin_define_std ("unix");			\
+ 	builtin_define_std ("sun");			\
+@@ -97,6 +97,8 @@
+ 	  }						\
+ 	TARGET_SUB_OS_CPP_BUILTINS();			\
+     } while (0)
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()	SOL_TARGET_OS_CPP_BUILTINS()
+ 
+ #define SUBTARGET_OVERRIDE_OPTIONS			\
+   do {							\
+diff -ruN gcc-4.9.4/gcc/config.gcc gcc-4.9.4-32strap/gcc/config.gcc
+--- gcc-4.9.4/gcc/config.gcc	2016-03-14 10:03:12.000000000 +0000
++++ gcc-4.9.4-32strap/gcc/config.gcc	2017-02-06 21:09:44.323667384 +0000
+@@ -815,7 +815,14 @@
+ *-*-solaris2*)
+   # i?86-*-solaris2* needs to insert headers between cpu default and
+   # Solaris 2 specific ones.
+-  sol2_tm_file="dbxelf.h elfos.h ${cpu_type}/sysv4.h sol2.h ${cpu_type}/sol2.h"
++  case ${target} in
++  arm* | aarch*)
++    sol2_tm_file="dbxelf.h elfos.h sol2.h ${cpu_type}/sol2.h"
++    ;;
++  *)
++    sol2_tm_file="dbxelf.h elfos.h ${cpu_type}/sysv4.h sol2.h ${cpu_type}/sol2.h"
++    ;;
++  esac
+   case ${target} in
+     *-*-solaris2.1[0-9]*)
+       sol2_tm_file="${sol2_tm_file} sol2-10.h"
+@@ -835,7 +842,7 @@
+   tmake_file="${tmake_file} t-sol2 t-slibgcc"
+   c_target_objs="${c_target_objs} sol2-c.o"
+   cxx_target_objs="${cxx_target_objs} sol2-c.o sol2-cxx.o"
+-  extra_objs="sol2.o sol2-stubs.o"
++  extra_objs="${extra_objs} sol2.o sol2-stubs.o"
+   extra_options="${extra_options} sol2.opt"
+   case ${enable_threads}:${have_pthread_h}:${have_thread_h} in
+     "":yes:* | yes:yes:* )
+@@ -936,6 +943,10 @@
+ 	done
+ 	TM_MULTILIB_CONFIG=`echo $TM_MULTILIB_CONFIG | sed 's/^,//'`
+ 	;;
++aarch64*-*-solaris*)
++	tm_file="${tm_file} ${sol2_tm_file} aarch64/aarch64-elf.h"
++	tmake_file="${tmake_file} aarch64/t-aarch64"
++	;;
+ alpha*-*-linux*)
+ 	tm_file="elfos.h ${tm_file} alpha/elf.h alpha/linux.h alpha/linux-elf.h glibc-stdint.h"
+ 	tmake_file="${tmake_file} alpha/t-linux"
+@@ -1018,6 +1029,13 @@
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	tmake_file="${tmake_file} arm/t-arm"
+ 	;;
++arm*-*-solaris*)
++	# Order is very tricky to get right here so we can't use ${sol2_tm_file}
++	tm_file="dbxelf.h elfos.h arm/unknown-elf.h arm/elf.h arm/aout.h arm/bpabi.h"
++	tm_file="${tm_file} sol2.h arm/sol2.h sol2-10.h arm/arm.h"
++	tmake_file="${tmake_file} arm/t-arm arm/t-arm-elf arm/t-bpabi"
++	default_use_cxa_atexit=yes
++	;;
+ arm*-*-linux-*)			# ARM GNU/Linux with ELF
+ 	tm_file="dbxelf.h elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h arm/elf.h arm/linux-gas.h arm/linux-elf.h"
+ 	extra_options="${extra_options} linux-android.opt"
+diff -ruN gcc-4.9.4/libgcc/config.host gcc-4.9.4-32strap/libgcc/config.host
+--- gcc-4.9.4/libgcc/config.host	2016-05-17 06:22:28.000000000 +0000
++++ gcc-4.9.4-32strap/libgcc/config.host	2017-02-06 17:47:53.332877606 +0000
+@@ -302,6 +302,9 @@
+ esac
+ 
+ case ${host} in
++aarch64*-*-solaris* | arm*-*-solaris*)
++  enable_execute_stack=enable-execute-stack-empty.c;
++  ;;
+ *-*-darwin* | *-*-freebsd* | *-*-netbsd* | *-*-openbsd* | *-*-solaris2*)
+   enable_execute_stack=enable-execute-stack-mprotect.c
+   ;;
+@@ -319,6 +322,10 @@
+ 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+ 	tmake_file="${tmake_file} ${cpu_type}/t-softfp t-softfp"
+ 	;;
++aarch64*-*-solaris*)
++	tmake_file="${cpu_type}/t-aarch64"
++	extra_parts=""
++	;;
+ aarch64*-*-linux*)
+ 	md_unwind_header=aarch64/linux-unwind.h
+ 	tmake_file="${tmake_file} ${cpu_type}/t-aarch64"
+@@ -364,6 +371,12 @@
+ arm*-*-netbsdelf*)
+ 	tmake_file="$tmake_file arm/t-arm arm/t-netbsd t-slibgcc-gld-nover"
+ 	;;
++arm*-*-solaris*)
++	tmake_file="arm/t-arm arm/t-elf arm/t-bpabi t-slibgcc-libgcc"
++	tm_file="arm/bpabi-lib.h"
++	unwind_header=config/arm/unwind-arm.h
++	extra_parts=""
++	;;
+ arm*-*-linux*)			# ARM GNU/Linux with ELF
+ 	tmake_file="${tmake_file} arm/t-arm t-fixedpoint-gnu-prefix"
+ 	tmake_file="${tmake_file} arm/t-elf arm/t-bpabi arm/t-linux-eabi t-slibgcc-libgcc"

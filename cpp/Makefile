@@ -33,10 +33,23 @@ OBJS = \
 CLEANFILES += \
 	y.tab.c$(STRAP)
 
+#
+# XXX We need to improve the bootstrap compiler selection. Right now GCC.HOST
+# macros are assumign things that we can't use depending on the system that
+# we're on.
+#
+ifeq ($(STRAP),strap)
+GCC =	gcc
+endif
+
+aarch64_CPPFLAGS +=	-DTARGET_ARM
+arm_CPPFLAGS +=		$(aarch64_CPPFLAGS)
+i86pc_CPPFLAGS +=	-DTARGET_I386
+
 CFLAGS +=	-O2
 LD =		$(GCC)
 
-COMPILE.c =	$(GCC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+COMPILE.c =	$(GCC) $($(ARCH)_CPPFLAGS) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 LINK.prog =	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 PROTOFILES =	$(DESTDIR)$(PROGDIR)/$(PROG)
 

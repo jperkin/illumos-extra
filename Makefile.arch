@@ -1,0 +1,43 @@
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2018, Joyent, Inc.
+#
+
+#
+# Makefile.arch - set *ARCH variables and determine top-level directories.
+#
+
+TOPLEVEL :=	$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+NATIVE_ARCH =	$(shell uname -i)
+
+ifeq ($(ARCH),)
+ARCH =		$(NATIVE_ARCH)
+endif
+
+DESTDIR =	$(TOPLEVEL)/proto-$(ARCH)
+
+ifeq ($(STRAP),strap)
+STRAPPROTO =	$(DESTDIR)
+else
+STRAPPROTO =	$(DESTDIR:proto=proto.strap)
+endif
+
+PATH =		$(STRAPPROTO)/usr/bin:/usr/bin:/usr/sbin:/sbin:/opt/local/bin
+
+aarch64_GCC =	$(DESTDIR)/usr/bin/aarch64-unknown-solaris2.11-gcc
+aarch64_GXX =	false
+arm_GCC =	$(DESTDIR)/usr/bin/arm-unknown-solaris2.11-gcc
+arm_GXX =	false
+i86pc_GCC =	$(DESTDIR)/usr/bin/gcc
+i86pc_GXX =	$(DESTDIR)/usr/bin/g++

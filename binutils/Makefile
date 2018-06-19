@@ -21,18 +21,33 @@
 # Copyright 2017, Joyent, Inc.
 #
 
-VER =	binutils-2.25.1
+aarch64_VER =		binutils-2.25.1
+aarch64_PATCHES =	patches/arm.patch
+aarch64_TARBALL =	$(aarch64_VER).tar.bz2
+arm_VER =		$(aarch64_VER)
+arm_PATCHES =		$(aarch64_PATCHES)
+arm_TARBALL =		$(aarch64_TARBALL)
+i86pc_VER =		binutils-2.25.1
+i86pc_PATCHES =		patches/efi.patch patches/stdio-limit.patch
+i86pc_TARBALL =		$(i86pc_VER).tar.bz2
 
 include ../Makefile.defs
 
-TARBALL =		$(VER).tar.bz2
-TARBALL_COMPRESS =	-j
 AUTOCONF_OPTS = \
 	--prefix=/usr/gnu \
 	--enable-64-bit-bfd \
 	--program-prefix=g
 
-PATCHES =	patches/*
+aarch64_AUTOCONF_OPTS += \
+	--target=aarch64-unknown-solaris2.11 \
+	--enable-ld=no
+
+arm_AUTOCONF_OPTS += \
+	--target=arm-unknown-solaris2.11 \
+	--enable-ld=no
+
+i86pc_AUTOCONF_OPTS = \
+	--target=i386-pc-solaris2.11
 
 AUTOCONF_ENV += \
 	CC=gcc \

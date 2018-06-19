@@ -10,32 +10,32 @@
 #
 
 #
-# Copyright (c) 2017, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
+# This Makefile is always included from software sub-directories hence the path.
+include ../Makefile.arch
+
 BASE =		$(PWD)
-DESTDIR =	$(BASE)/../proto
-VER.32 =	$(VER)-32$(STRAP)
-VER.64 =	$(VER)-64$(STRAP)
+
+ifdef $(ARCH)_VER
+VER =		$($(ARCH)_VER)
+endif
+
+VER.32 =	$(VER)-$(ARCH)-32$(STRAP)
+VER.64 =	$(VER)-$(ARCH)-64$(STRAP)
 OBJ.32 =	$(VER.32)$(SEPARATE_BUILD:yes=.build)
 OBJ.64 =	$(VER.64)$(SEPARATE_BUILD:yes=.build)
 CTF.32 =	ctfobjects-32$(STRAP)
 CTF.64 =	ctfobjects-64$(STRAP)
 
-ifeq ($(STRAP),strap)
-STRAPPROTO =	$(DESTDIR)
-else
-STRAPPROTO =	$(DESTDIR:proto=proto.strap)
-endif
-
-PATH =		$(STRAPPROTO)/usr/bin:/usr/bin:/usr/sbin:/sbin:/opt/local/bin
-
 MAKE =		gmake
-MAX_JOBS =	128
+MAX_JOBS ?=	128
 PARALLEL =	-j$(MAX_JOBS)
 MAKE_VERBOSE =	V=1
-GCC =		$(DESTDIR)/usr/bin/gcc
-GXX =		$(DESTDIR)/usr/bin/g++
+
+GCC =		$($(ARCH)_GCC)
+GXX =		$($(ARCH)_GXX)
 GCC.64 =	$(GCC) -m64
 GXX.64 =	$(GXX) -m64
 
@@ -111,7 +111,8 @@ AUTOCONF_ENV = \
 	$(AUTOCONF_CPPFLAGS) \
 	$(AUTOCONF_CFLAGS) \
 	$(AUTOCONF_LDFLAGS) \
-	$(AUTOCONF_LIBS)
+	$(AUTOCONF_LIBS) \
+	$($(ARCH)_AUTOCONF_ENV)
 
 AUTOCONF_ENV.64 = \
 	PKG_CONFIG_LIBDIR="" \
@@ -120,22 +121,35 @@ AUTOCONF_ENV.64 = \
 	$(AUTOCONF_CPPFLAGS) \
 	$(AUTOCONF_CFLAGS.64) \
 	$(AUTOCONF_LDFLAGS.64) \
-	$(AUTOCONF_LIBS.64)
+	$(AUTOCONF_LIBS.64) \
+	$($(ARCH)_AUTOCONF_ENV)
 
 AUTOCONF_OPTS = \
 	--prefix=$(AUTOCONF_PREFIX)
 
 AUTOCONF_OPTS.32 = \
-	$(AUTOCONF_OPTS)
+	$(AUTOCONF_OPTS) \
+	$($(ARCH)_AUTOCONF_OPTS)
 
 AUTOCONF_OPTS.64 = \
-	$(AUTOCONF_OPTS)
+	$(AUTOCONF_OPTS) \
+	$($(ARCH)_AUTOCONF_OPTS)
 
 ALL_TGT =
+INSTALL_TGT =	install
 OVERRIDES =	$(MAKE_VERBOSE)
 
-TARBALL =		$(VER).tar.gz
+ifdef $(ARCH)_TARBALL
+TARBALL =	$($(ARCH)_TARBALL)
+else
+TARBALL =	$(VER).tar.gz
+endif
+
+ifeq (.bz2,$(findstring .bz2,$(TARBALL)))
+TARBALL_COMPRESS =	-j
+else
 TARBALL_COMPRESS =	-z
+endif
 
 UNPACK_SENTINEL =	configure
 FROB_SENTINEL.32 =	chmod 755 $(VER.32)/$(UNPACK_SENTINEL)
@@ -144,13 +158,13 @@ FROB_SENTINEL.64 =	chmod 755 $(VER.64)/$(UNPACK_SENTINEL)
 PATCHSTRIP =	1
 
 APPLY_PATCHES.32 = \
-	for p in $(PATCHES); do \
+	for p in $(PATCHES) $($(ARCH)_PATCHES); do \
 	    echo "Applying $$p"; \
 	    $(GPATCH) -d .unpack32/$(VER) -p$(PATCHSTRIP) < "$$p" || exit 1; \
 	    done
 
 APPLY_PATCHES.64 = \
-	for p in $(PATCHES); do \
+	for p in $(PATCHES) $($(ARCH)_PATCHES); do \
 	    echo "Applying $$p"; \
 	    $(GPATCH) -d .unpack64/$(VER) -p$(PATCHSTRIP) < "$$p" || exit 1; \
 	    done

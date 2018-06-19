@@ -10,19 +10,21 @@
 #
 
 #
-# Copyright (c) 2017, Joyent, Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 
 #
 # To build everything just run 'gmake' in this directory.
 #
 
-BASE =		$(PWD)
-DESTDIR =	$(BASE)/proto
+include Makefile.arch
 
-ifeq ($(STRAP),strap)
-STRAPPROTO =	$(DESTDIR)
-SUBDIRS = \
+aarch64_STRAP_SUBDIRS = \
+	cpp
+
+arm_STRAP_SUBDIRS = $(aarch64_STRAP_SUBDIRS)
+
+i86pc_STRAP_SUBDIRS = \
 	cpp \
 	bzip2 \
 	libexpat \
@@ -34,9 +36,13 @@ SUBDIRS = \
 	nss-nspr \
 	openssl1x \
 	perl
-else
-STRAPPROTO =	$(DESTDIR:proto=proto.strap)
-SUBDIRS = \
+
+aarch64_SUBDIRS = \
+	cpp
+
+arm_SUBDIRS = $(aarch64_SUBDIRS)
+
+i86pc_SUBDIRS = \
 	bash \
 	bind \
 	bzip2 \
@@ -78,10 +84,6 @@ SUBDIRS = \
 	wget \
 	xz
 
-endif
-
-PATH =		$(STRAPPROTO)/usr/bin:/usr/bin:/usr/sbin:/sbin:/opt/local/bin
-
 NAME =	illumos-extra
 
 AWK =		$(shell (which gawk 2>/dev/null | grep -v "^no ") || which awk)
@@ -89,6 +91,18 @@ BRANCH =	$(shell git symbolic-ref HEAD | $(AWK) -F/ '{print $$3}')
 
 ifeq ($(TIMESTAMP),)
   TIMESTAMP =	$(shell date -u "+%Y%m%dT%H%M%SZ")
+endif
+
+ifeq ($(ARCH),arm)
+  ifeq ($(LD_ALTEXEC),)
+    $(error LD_ALTEXEC should point to an arm ld)
+  endif
+endif
+
+ifeq ($(ARCH),aarch64)
+  ifeq ($(LD_ALTEXEC),)
+    $(error LD_ALTEXEC should point to an aarch64 ld)
+  endif
 endif
 
 GITDESCRIBE = \
@@ -109,9 +123,9 @@ TARBALL =	$(NAME)-$(BRANCH)-$(TIMESTAMP)-$(GITDESCRIBE).tgz
 NATIVE_PERL =	$(STRAPPROTO)/usr/perl5/5.12/bin/perl
 
 
-all: $(SUBDIRS)
+all: $($(ARCH)_SUBDIRS)
 
-strap: $(SUBDIRS)
+strap: $($(ARCH)_STRAP_SUBDIRS)
 
 curl: libz openssl1x libidn2
 gzip: libz
@@ -133,20 +147,19 @@ openssh: openssl1x
 # gets appended.
 #
 
-$(DESTDIR)/usr/gnu/bin/gas: FRC
+$(DESTDIR)/usr/gnu/bin/gas:
 	(cd binutils && \
 	    PKG_CONFIG_LIBDIR="" \
 	    STRAP=$(STRAP) \
 	    $(MAKE) DESTDIR=$(DESTDIR) install)
 
-
-$(DESTDIR)/usr/bin/gcc: $(DESTDIR)/usr/gnu/bin/gas
+$($(ARCH)_GCC): $(DESTDIR)/usr/gnu/bin/gas
 	(cd gcc4 && \
 	    PKG_CONFIG_LIBDIR="" \
 	    STRAP=$(STRAP) \
 	    $(MAKE) DESTDIR=$(DESTDIR) install strapfix)
 
-$(SUBDIRS): $(DESTDIR)/usr/bin/gcc
+$($(ARCH)_SUBDIRS): $($(ARCH)_GCC)
 	(cd $@ && \
 	    PKG_CONFIG_LIBDIR="" \
 	    STRAP=$(STRAP) \
@@ -156,14 +169,14 @@ $(SUBDIRS): $(DESTDIR)/usr/bin/gcc
 	    NATIVE_PERL=$(NATIVE_PERL) \
 	    $(MAKE) DESTDIR=$(DESTDIR) install)
 
-install: $(SUBDIRS) gcc4 binutils
+install: $($(ARCH)_SUBDIRS) gcc4 binutils
 
-install_strap: $(SUBDIRS) gcc4 binutils
+install_strap: $($(ARCH)_STRAP_SUBDIRS) gcc4 binutils
 
 clean:
-	-for dir in $(SUBDIRS) gcc4 binutils; \
+	-for dir in $($(ARCH)_SUBDIRS) gcc4 binutils; \
 	    do (cd $$dir; $(MAKE) DESTDIR=$(DESTDIR) clean); done
-	-rm -rf proto
+	-rm -rf $(DESTDIR)
 
 manifest:
 	cp manifest $(DESTDIR)/$(DESTNAME)
